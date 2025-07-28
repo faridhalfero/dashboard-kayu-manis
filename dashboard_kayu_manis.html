@@ -1,0 +1,100 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+  <title>Dashboard Kayu Manis</title>
+  <link rel="stylesheet" href="https://unpkg.com/leaflet@1.9.3/dist/leaflet.css" />
+  <script src="https://unpkg.com/leaflet@1.9.3/dist/leaflet.js"></script>
+  <script src="https://cdn.jsdelivr.net/npm/chart.js"></script>
+  <style>
+    body { font-family: Arial; margin: 0; padding: 0; }
+    #map { height: 500px; }
+    .container { padding: 20px; }
+    canvas { max-width: 100%; }
+    table { width: 100%; border-collapse: collapse; margin-top: 20px; }
+    th, td { border: 1px solid #ddd; padding: 8px; }
+    th { background: #f2f2f2; }
+  </style>
+</head>
+<body>
+  <div id="map"></div>
+  <div class="container">
+    <h2>Grafik Luas Kebun per Petani</h2>
+    <canvas id="chartLuas"></canvas>
+
+    <h2>Data Kebun Kayu Manis</h2>
+    <table>
+      <thead>
+        <tr>
+          <th>Nama Petani</th>
+          <th>Farm Code</th>
+          <th>Luas (ha)</th>
+          <th>Volume Tersedia (kg)</th>
+        </tr>
+      </thead>
+      <tbody id="tabelData"></tbody>
+    </table>
+  </div>
+
+  <script>
+    const map = L.map('map').setView([-2.27, 101.59], 13);
+    L.tileLayer('https://{s}.tile.openstreetmap.org/{z}/{x}/{y}.png', {
+      maxZoom: 19
+    }).addTo(map);
+
+    fetch('kebun_kayu_manis_merged.geojson')
+      .then(res => res.json())
+      .then(data => {
+        const luasPerPetani = {};
+
+        L.geoJSON(data, {
+          onEachFeature: function (feature, layer) {
+            const prop = feature.properties;
+            const nama = prop["Farmer's Name"] || prop.Farmer || '-';
+            const fcode = prop.F_Code || '-';
+            const luas = parseFloat(prop["Garden Size (ha)"] || prop.Luas_Poly || 0);
+            const volume = prop["Available Volume (kg)"] || '-';
+
+            // popup
+            layer.bindPopup(
+              `<strong>${nama}</strong><br/>Farm Code: ${fcode}<br/>Luas: ${luas} ha<br/>Volume: ${volume} kg`
+            );
+
+            // update grafik data
+            if (!luasPerPetani[nama]) luasPerPetani[nama] = 0;
+            luasPerPetani[nama] += luas;
+
+            // tambah ke tabel
+            const row = `<tr><td>${nama}</td><td>${fcode}</td><td>${luas.toFixed(2)}</td><td>${volume}</td></tr>`;
+            document.getElementById('tabelData').innerHTML += row;
+          }
+        }).addTo(map);
+
+        // buat chart
+        const labels = Object.keys(luasPerPetani);
+        const dataChart = Object.values(luasPerPetani);
+
+        new Chart(document.getElementById('chartLuas'), {
+          type: 'bar',
+          data: {
+            labels: labels,
+            datasets: [{
+              label: 'Luas Kebun (ha)',
+              data: dataChart,
+              backgroundColor: 'rgba(75, 192, 192, 0.5)',
+              borderColor: 'rgba(75, 192, 192, 1)',
+              borderWidth: 1
+            }]
+          },
+          options: {
+            responsive: true,
+            scales: {
+              y: { beginAtZero: true }
+            }
+          }
+        });
+      });
+  </script>
+</body>
+</html>
