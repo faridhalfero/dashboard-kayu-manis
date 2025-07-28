@@ -1,24 +1,51 @@
 <!DOCTYPE html>
-<html lang="en">
+<html lang="id">
 <head>
   <meta charset="UTF-8" />
   <meta name="viewport" content="width=device-width, initial-scale=1.0" />
-  <title>Dashboard Kayu Manis</title>
+  <title>Dashboard Kebun Kayu Manis</title>
+
+  <!-- Leaflet CSS & JS -->
   <link rel="stylesheet" href="https://unpkg.com/leaflet@1.9.3/dist/leaflet.css" />
   <script src="https://unpkg.com/leaflet@1.9.3/dist/leaflet.js"></script>
+
+  <!-- Chart.js -->
   <script src="https://cdn.jsdelivr.net/npm/chart.js"></script>
+
   <style>
-    body { font-family: Arial; margin: 0; padding: 0; }
-    #map { height: 500px; }
-    .container { padding: 20px; }
-    canvas { max-width: 100%; }
-    table { width: 100%; border-collapse: collapse; margin-top: 20px; }
-    th, td { border: 1px solid #ddd; padding: 8px; }
-    th { background: #f2f2f2; }
+    body {
+      font-family: Arial, sans-serif;
+      margin: 0;
+      padding: 0;
+    }
+    #map {
+      height: 500px;
+      width: 100%;
+    }
+    .container {
+      padding: 20px;
+    }
+    canvas {
+      max-width: 100%;
+    }
+    table {
+      width: 100%;
+      border-collapse: collapse;
+      margin-top: 20px;
+    }
+    th, td {
+      border: 1px solid #ddd;
+      padding: 8px;
+      text-align: left;
+    }
+    th {
+      background-color: #f2f2f2;
+    }
   </style>
 </head>
 <body>
   <div id="map"></div>
+
   <div class="container">
     <h2>Grafik Luas Kebun per Petani</h2>
     <canvas id="chartLuas"></canvas>
@@ -40,38 +67,49 @@
   <script>
     const map = L.map('map').setView([-2.27, 101.59], 13);
     L.tileLayer('https://{s}.tile.openstreetmap.org/{z}/{x}/{y}.png', {
+      attribution: '&copy; OpenStreetMap contributors',
       maxZoom: 19
     }).addTo(map);
 
     fetch('kebun_kayu_manis_merged.geojson')
-      .then(res => res.json())
+      .then(response => response.json())
       .then(data => {
         const luasPerPetani = {};
 
         L.geoJSON(data, {
           onEachFeature: function (feature, layer) {
             const prop = feature.properties;
-            const nama = prop["Farmer's Name"] || prop.Farmer || '-';
-            const fcode = prop.F_Code || '-';
+            const nama = prop["Farmer's Name"] || prop.Farmer || 'Tidak diketahui';
+            const fcode = prop.F_Code || 'Tidak ada';
             const luas = parseFloat(prop["Garden Size (ha)"] || prop.Luas_Poly || 0);
-            const volume = prop["Available Volume (kg)"] || '-';
+            const volume = prop["Available Volume (kg)"] || 'N/A';
 
-            // popup
-            layer.bindPopup(
-              `<strong>${nama}</strong><br/>Farm Code: ${fcode}<br/>Luas: ${luas} ha<br/>Volume: ${volume} kg`
-            );
+            layer.bindPopup(`
+              <strong>${nama}</strong><br/>
+              Farm Code: ${fcode}<br/>
+              Luas: ${luas.toFixed(2)} ha<br/>
+              Volume: ${volume} kg
+            `);
 
-            // update grafik data
+            // Update grafik
             if (!luasPerPetani[nama]) luasPerPetani[nama] = 0;
             luasPerPetani[nama] += luas;
 
-            // tambah ke tabel
-            const row = `<tr><td>${nama}</td><td>${fcode}</td><td>${luas.toFixed(2)}</td><td>${volume}</td></tr>`;
-            document.getElementById('tabelData').innerHTML += row;
+            // Tambahkan ke tabel
+            const baris = `
+              <tr>
+                <td>${nama}</td>
+                <td>${fcode}</td>
+                <td>${luas.toFixed(2)}</td>
+                <td>${volume}</td>
+              </tr>
+            `;
+            document.getElementById('tabelData')
+              .insertAdjacentHTML('beforeend', baris);
           }
         }).addTo(map);
 
-        // buat chart
+        // Tampilkan chart
         const labels = Object.keys(luasPerPetani);
         const dataChart = Object.values(luasPerPetani);
 
@@ -90,10 +128,20 @@
           options: {
             responsive: true,
             scales: {
-              y: { beginAtZero: true }
+              y: {
+                beginAtZero: true,
+                title: {
+                  display: true,
+                  text: 'Luas (ha)'
+                }
+              }
             }
           }
         });
+      })
+      .catch(error => {
+        console.error('Gagal memuat GeoJSON:', error);
+        alert('Data GeoJSON gagal dimuat. Pastikan file "kebun_kayu_manis_merged.geojson" tersedia.');
       });
   </script>
 </body>
